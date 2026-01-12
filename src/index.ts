@@ -266,7 +266,7 @@ app.get(
     try {
       const { sessionId } = req.params;
 
-      if (!sessionId) {
+      if (!sessionId || typeof sessionId !== "string") {
         throw new ApiError(400, "Missing session ID");
       }
 
