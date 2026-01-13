@@ -21,7 +21,7 @@ import { authenticateToken } from "./middleware/auth";
 import { JWTPayload } from "./types";
 import { randomUUID } from "crypto";
 
-truncateAllTables();
+// truncateAllTables();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
