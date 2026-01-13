@@ -10,18 +10,25 @@ import {
   getAllTransaction,
   createOrUpdateUser,
   getUserByGoogleId,
-  createCryptoTransaction, 
+  createCryptoTransaction,
   getAllCryptoTransactions,
+  getCryptoTransactionByTransacctionId,
+  updateCryptoTransactionStatus,
+  truncateAllTables,
 } from "./database";
 import { errorHandler, ApiError } from "./middleware/errorHandler";
 import { authenticateToken } from "./middleware/auth";
 import { JWTPayload } from "./types";
+import { randomUUID } from "crypto";
+
+truncateAllTables();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+const ITEM_URL = "https://pay.hot-labs.org/payment?item_id=083d02b3e74da7506491cd96763317073a47fc0d5fd3bec91fd5a737fd64d157&amount=0.01";
 
 const oauth2Client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
@@ -79,7 +86,22 @@ app.post("/crypto-webhook", async (req: Request, res: Response, next: NextFuncti
   try {
     console.log("Crypto webhook received:", req.body);
 
-    const { type, item_id, status, memo, amount, near_trx } = req.body;
+    const { type, status, memo, near_trx } = req.body;
+
+    if (type !== "PAYMENT_STATUS_UPDATE") {
+      console.log(`Unhandled webhook type: ${type}`);
+      res.json({ received: true });
+      return;
+    }
+
+    const transactionId = memo;
+
+    const dbStatus = status === "SUCCESS" ? "completed" : status === "FAILED" ? "failed" : "pending";
+
+    console.log(`Updating crypto transaction ${transactionId} to status: ${dbStatus}`);
+
+    updateCryptoTransactionStatus(transactionId, dbStatus, near_trx);
+
     res.json({ received: true });
   } catch (err) {
     next(err);
@@ -221,37 +243,37 @@ app.post(
       }
 
 
-      const response = await fetch("https://dev.herewallet.app/partners/merchant_item", {
-        method: "POST",
-        headers: {
-          "accept": "*/*",
-          "authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkb21haW4iOiJwYXkuaG90LWxhYnMub3JnIiwia2V5X2lkIjoxNCwidzNfdXNlcl9pZCI6NTQxMTMsInR5cGUiOiJ3aWJlMyJ9._U14S2VWNiRFMv93__T32HeOPHjFUNb9TDhi-o3p4WY",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          merchant_id: "maguila.near",
-          memo: productName,
-          header: productName,
-          description: "",
-          token: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
-          redirect_url: "",
-          icon: "",
-          webhook_url: `http://localhost:3000/crypto-webhook`
-        })
-      });
+      // const response = await fetch("https://dev.herewallet.app/partners/merchant_item", {
+      //   method: "POST",
+      //   headers: {
+      //     "accept": "*/*",
+      //     "authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkb21haW4iOiJwYXkuaG90LWxhYnMub3JnIiwia2V5X2lkIjoxNCwidzNfdXNlcl9pZCI6NTQxMTMsInR5cGUiOiJ3aWJlMyJ9._U14S2VWNiRFMv93__T32HeOPHjFUNb9TDhi-o3p4WY",
+      //     "content-type": "application/json",
+      //   },
+      //   body: JSON.stringify({
+      //     merchant_id: "maguila.near",
+      //     memo: productName,
+      //     header: productName,
+      //     description: "",
+      //     token: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+      //     redirect_url: "",
+      //     icon: "",
+      //     webhook_url: `http://localhost:3000/crypto-webhook`
+      //   })
+      // });
 
-      const data = await response.json();
-
+      // const data = await response.json();
+      const transactionId = randomUUID();
       createCryptoTransaction({
         email,
-        item_id: data.item_id,
+        transacction_id: transactionId,
         amount_cents: amount,
         product_name: productName,
       });
 
       res.json({
-        paymentUrl: `https://pay.hot-labs.org/payment?item_id=${data.item_id}`,
-        sessionId: data.id,
+        paymentUrl: `${ITEM_URL}&transaction_id=${transactionId}`,
+        sessionId: transactionId
       });
     } catch (err) {
       next(err);
@@ -274,6 +296,34 @@ app.get(
 
       if (!transaction) {
         throw new ApiError(404, "Transaction not found");
+      }
+
+      res.setHeader('Content-Type', 'application/json');
+      res.json({
+        status: transaction.status,
+        transaction,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+app.get(
+  "/crypto-status/:transactionId",
+  authenticateToken,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { transactionId } = req.params;
+
+      if (!transactionId || typeof transactionId !== "string") {
+        throw new ApiError(400, "Missing transaction ID");
+      }
+
+      const transaction = getCryptoTransactionByTransacctionId(transactionId);
+
+      if (!transaction) {
+        throw new ApiError(404, "Crypto transaction not found");
       }
 
       res.setHeader('Content-Type', 'application/json');
