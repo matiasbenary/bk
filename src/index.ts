@@ -14,14 +14,12 @@ import {
   getAllCryptoTransactions,
   getCryptoTransactionByTransacctionId,
   updateCryptoTransactionStatus,
-  truncateAllTables,
+  refreshDatabase,
 } from "./database";
 import { errorHandler, ApiError } from "./middleware/errorHandler";
 import { authenticateToken } from "./middleware/auth";
 import { JWTPayload } from "./types";
 import { randomUUID } from "crypto";
-
-// truncateAllTables();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,9 +34,14 @@ const oauth2Client = new OAuth2Client(
   process.env.GOOGLE_REDIRECT_URI
 );
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  ...(FRONTEND_URL !== "http://localhost:5173" ? [FRONTEND_URL] : [])
+];
+
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -96,7 +99,7 @@ app.post("/crypto-webhook", async (req: Request, res: Response, next: NextFuncti
 
     const transactionId = memo;
 
-    const dbStatus = status === "SUCCESS" ? "completed" : status === "FAILED" ? "failed" : "pending";
+    const dbStatus = status === "SUCCESS" ? "completed" : "pending";
 
     console.log(`Updating crypto transaction ${transactionId} to status: ${dbStatus}`);
 
@@ -170,10 +173,6 @@ app.get("/auth/me", authenticateToken, (req: Request, res: Response) => {
   res.json({ user: req.user });
 });
 
-app.post("/auth/logout", (_req: Request, res: Response) => {
-  res.json({ message: "Logged out successfully" });
-});
-
 app.post(
   "/create-session",
   authenticateToken,
@@ -242,27 +241,6 @@ app.post(
         );
       }
 
-
-      // const response = await fetch("https://dev.herewallet.app/partners/merchant_item", {
-      //   method: "POST",
-      //   headers: {
-      //     "accept": "*/*",
-      //     "authorization": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkb21haW4iOiJwYXkuaG90LWxhYnMub3JnIiwia2V5X2lkIjoxNCwidzNfdXNlcl9pZCI6NTQxMTMsInR5cGUiOiJ3aWJlMyJ9._U14S2VWNiRFMv93__T32HeOPHjFUNb9TDhi-o3p4WY",
-      //     "content-type": "application/json",
-      //   },
-      //   body: JSON.stringify({
-      //     merchant_id: "maguila.near",
-      //     memo: productName,
-      //     header: productName,
-      //     description: "",
-      //     token: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
-      //     redirect_url: "",
-      //     icon: "",
-      //     webhook_url: `http://localhost:3000/crypto-webhook`
-      //   })
-      // });
-
-      // const data = await response.json();
       const transactionId = randomUUID();
       createCryptoTransaction({
         email,
@@ -352,6 +330,19 @@ app.get("/crypto-transactions", authenticateToken, async (_req: Request, res: Re
     const transactions = getAllCryptoTransactions();
     res.setHeader('Content-Type', 'application/json');
     res.json({ transactions });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/health", (_req: Request, res: Response) => {
+  res.json({ status: "ok" });
+});
+
+app.post("/refresh-database", (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    refreshDatabase();
+    res.json({ message: "Database refreshed successfully" });
   } catch (err) {
     next(err);
   }

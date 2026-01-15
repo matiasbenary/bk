@@ -1,48 +1,52 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { Transaction, User, Product, CryptoTransaction } from './types';
+import { Transaction, User, CryptoTransaction } from './types';
 
 const db = new Database(path.join(__dirname, '../transactions.db'));
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT,
-    stripe_id TEXT UNIQUE NOT NULL,
-    transaction_id TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    amount_cents INTEGER,
-    product_name TEXT,
-    session_id TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
-    
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    google_id TEXT UNIQUE NOT NULL,
-    email TEXT NOT NULL,
-    name TEXT,
-    picture TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
+function initializeTables() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT,
+      stripe_id TEXT UNIQUE NOT NULL,
+      transaction_id TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      amount_cents INTEGER,
+      product_name TEXT,
+      session_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS crypto_transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    amount_cents INTEGER,
-    product_name TEXT,
-    transacction_id TEXT,
-    near_transaction_hash TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      google_id TEXT UNIQUE NOT NULL,
+      email TEXT NOT NULL,
+      name TEXT,
+      picture TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS crypto_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      amount_cents INTEGER,
+      product_name TEXT,
+      transacction_id TEXT,
+      near_transaction_hash TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+initializeTables();
 
 
 export function createTransaction(data: {
@@ -179,12 +183,11 @@ export function updateCryptoTransactionStatus(
   return stmt.run(status, near_transaction_hash, transacction_id);
 }
 
-export function truncateAllTables() {
-  console.log('Truncating all tables...');
-  db.exec('DELETE FROM transactions');
-  db.exec('DELETE FROM users');
-  db.exec('DELETE FROM crypto_transactions');
-  console.log('All tables truncated successfully');
+export function refreshDatabase() {
+  db.exec('DROP TABLE IF EXISTS transactions');
+  db.exec('DROP TABLE IF EXISTS users');
+  db.exec('DROP TABLE IF EXISTS crypto_transactions');
+  initializeTables();
 }
 
 export default db;
