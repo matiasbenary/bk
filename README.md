@@ -2,6 +2,8 @@
 
 A Node.js backend service demonstrating dual payment integration with traditional (Stripe) and cryptocurrency (NEAR via HOT-PAY) payment methods. Features secure Google OAuth 2.0 authentication.
 
+**[Live Demo](https://onechocolate.netlify.app/)** - Try it out!
+
 ## Installation
 
 ```bash
@@ -81,6 +83,14 @@ sequenceDiagram
 4. Stripe sends webhook to `POST /webhook`
 5. Backend updates transaction status
 6. Frontend polls `GET /status/:sessionId` to check status
+
+**Testing Stripe Webhooks:**
+
+To test Stripe webhooks in development, run the Stripe CLI to forward webhook events to your backend:
+
+```bash
+stripe listen --forward-to https://bk-production-8603.up.railway.app/webhook
+```
 
 **Diagram:**
 ```mermaid
