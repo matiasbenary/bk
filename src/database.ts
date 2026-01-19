@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { Transaction, User, CryptoTransaction } from './types';
+import { Transaction, User, CryptoTransaction, Product } from './types';
 
 const db = new Database(path.join(__dirname, '../transactions.db'));
 
@@ -42,6 +42,19 @@ function initializeTables() {
       near_transaction_hash TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      price INTEGER NOT NULL,
+      image_url TEXT,
+      stripe_product_id TEXT,
+      hotpay_item_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 }
@@ -126,15 +139,6 @@ export function getUserByGoogleId(google_id: string): User | undefined {
   return stmt.get(google_id) as User | undefined;
 }
 
-export function getUserById(id: number): User | undefined {
-  const stmt = db.prepare(`
-    SELECT * FROM users
-    WHERE id = ?
-  `);
-
-  return stmt.get(id) as User | undefined;
-}
-
 export function createCryptoTransaction(data: {
   email: string;
   transacction_id: string;
@@ -183,10 +187,44 @@ export function updateCryptoTransactionStatus(
   return stmt.run(status, near_transaction_hash, transacction_id);
 }
 
+export function createProduct(data: {
+  name: string;
+  description?: string;
+  price: number;
+  image_url?: string;
+  stripe_product_id?: string;
+  hotpay_item_id?: string;
+}) {
+  const stmt = db.prepare(`
+    INSERT INTO products (name, description, price, image_url, stripe_product_id, hotpay_item_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  return stmt.run(
+    data.name,
+    data.description || null,
+    data.price,
+    data.image_url || null,
+    data.stripe_product_id || null,
+    data.hotpay_item_id || null
+  );
+}
+
+export function getAllProducts(): Product[] {
+  const stmt = db.prepare('SELECT * FROM products ORDER BY created_at DESC');
+  return stmt.all() as Product[];
+}
+
+export function getProductById(id: number): Product | undefined {
+  const stmt = db.prepare('SELECT * FROM products WHERE id = ?');
+  return stmt.get(id) as Product | undefined;
+}
+
 export function refreshDatabase() {
   db.exec('DROP TABLE IF EXISTS transactions');
   db.exec('DROP TABLE IF EXISTS users');
   db.exec('DROP TABLE IF EXISTS crypto_transactions');
+  db.exec('DROP TABLE IF EXISTS products');
   initializeTables();
 }
 

@@ -48,7 +48,11 @@ export interface JWTPayload {
 export interface Product {
   id: number;
   name: string;
-  client_id: number;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  stripe_product_id: string | null;
+  hotpay_item_id: string | null;
   created_at: string;
 }
 
