@@ -4,10 +4,10 @@ import { refreshDatabase } from "./database";
 import { errorHandler } from "./middleware/errorHandler";
 import { authenticateToken } from "./middleware/auth";
 
-import { googleAuth, googleCallback, getMe } from "./controllers/authController";
-import { stripeWebhook, createSession, getStatus, getTransactions } from "./controllers/paymentController";
-import { cryptoWebhook, createCryptoSession, getCryptoStatus, getCryptoTransactions } from "./controllers/cryptoController";
-import { create as createProduct, list as listProducts } from "./controllers/productController";
+import { googleAuth, googleCallback, getMe } from "./controllers/auth";
+import stripe from "./controllers/stripe";
+import hotPay from "./controllers/hot-pay";
+import { create as createProduct, list as listProducts } from "./controllers/product";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,28 +25,24 @@ app.use(
   })
 );
 
-// Stripe webhook (needs raw body)
-app.post("/webhook", express.raw({ type: "application/json" }), stripeWebhook);
-
 app.use(express.json());
-
-// Crypto webhook
-app.post("/crypto-webhook", cryptoWebhook);
 
 // Auth routes
 app.get("/auth/google", googleAuth);
 app.get("/auth/google/callback", googleCallback);
 app.get("/auth/me", authenticateToken, getMe);
 
-// Payment routes
-app.post("/create-session", authenticateToken, createSession);
-app.get("/status/:sessionId", authenticateToken, getStatus);
-app.get("/transactions", authenticateToken, getTransactions);
+// Stripe routes
+app.post("/stripe-webhook", express.raw({ type: "application/json" }), stripe.webHook);
+app.post("/stripe-session", authenticateToken, stripe.createSession);
+app.get("/stripe-status/:sessionId", authenticateToken, stripe.getStatus);
+app.get("/stripe-transactions", authenticateToken, stripe.getTransactions);
 
-// Crypto routes
-app.post("/create-crypto-session", authenticateToken, createCryptoSession);
-app.get("/crypto-status/:transactionId", authenticateToken, getCryptoStatus);
-app.get("/crypto-transactions", authenticateToken, getCryptoTransactions);
+// Hot Pay routes
+app.post("/hot-pay-webhook", hotPay.webHook);
+app.post("/hot-pay-session", authenticateToken, hotPay.createSession);
+app.get("/hot-pay-status/:sessionId", authenticateToken, hotPay.getStatus);
+app.get("/hot-pay-transactions", authenticateToken, hotPay.getTransactions);
 
 // Product routes
 app.post("/products", authenticateToken, createProduct);

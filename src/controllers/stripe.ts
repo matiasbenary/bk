@@ -13,7 +13,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
-export const stripeWebhook = (req: Request, res: Response) => {
+const webHook = (req: Request, res: Response) => {
   const sig = req.headers["stripe-signature"] as string;
 
   let event: Stripe.Event;
@@ -47,7 +47,7 @@ export const stripeWebhook = (req: Request, res: Response) => {
   res.json({ received: true });
 };
 
-export const createSession = async (req: Request, res: Response, next: NextFunction) => {
+const createSession = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, productId } = req.body;
 
@@ -97,7 +97,7 @@ export const createSession = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const getStatus = async (req: Request, res: Response, next: NextFunction) => {
+const getStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { sessionId } = req.params;
 
@@ -120,11 +120,18 @@ export const getStatus = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
-export const getTransactions = async (_req: Request, res: Response, next: NextFunction) => {
+const getTransactions = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const transactions = getAllTransaction();
     res.json({ transactions });
   } catch (err) {
     next(err);
   }
+};
+
+export default {
+  webHook,
+  createSession,
+  getStatus,
+  getTransactions
 };

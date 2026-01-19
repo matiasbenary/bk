@@ -1,17 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import { randomUUID } from "crypto";
 import {
-  createCryptoTransaction,
-  getAllCryptoTransactions,
-  getCryptoTransactionByTransacctionId,
-  updateCryptoTransactionStatus,
+  createHotTransaction,
+  getAllHotTransactions,
+  getHotTransactionByTransactionId,
+  updateHotTransactionStatus,
   getProductById,
 } from "../database";
 import { ApiError } from "../middleware/errorHandler";
 
 const HOTPAY_PAYMENT_URL = "https://pay.hot-labs.org/payment";
 
-export const cryptoWebhook = async (req: Request, res: Response, next: NextFunction) => {
+const webHook = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log("Crypto webhook received:", req.body);
 
@@ -28,7 +28,7 @@ export const cryptoWebhook = async (req: Request, res: Response, next: NextFunct
 
     console.log(`Updating crypto transaction ${transactionId} to status: ${dbStatus}`);
 
-    updateCryptoTransactionStatus(transactionId, dbStatus, near_trx);
+    updateHotTransactionStatus(transactionId, dbStatus, near_trx);
 
     res.json({ received: true });
   } catch (err) {
@@ -36,7 +36,7 @@ export const cryptoWebhook = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const createCryptoSession = async (req: Request, res: Response, next: NextFunction) => {
+const createSession = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, productId } = req.body;
 
@@ -54,9 +54,9 @@ export const createCryptoSession = async (req: Request, res: Response, next: Nex
     }
 
     const transactionId = randomUUID();
-    createCryptoTransaction({
+    createHotTransaction({
       email,
-      transacction_id: transactionId,
+      transaction_id: transactionId,
       amount_cents: product.price,
       product_name: product.name,
     });
@@ -70,7 +70,7 @@ export const createCryptoSession = async (req: Request, res: Response, next: Nex
   }
 };
 
-export const getCryptoStatus = async (req: Request, res: Response, next: NextFunction) => {
+const getStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { transactionId } = req.params;
 
@@ -78,7 +78,7 @@ export const getCryptoStatus = async (req: Request, res: Response, next: NextFun
       throw new ApiError(400, "Missing transaction ID");
     }
 
-    const transaction = getCryptoTransactionByTransacctionId(transactionId);
+    const transaction = getHotTransactionByTransactionId(transactionId);
 
     if (!transaction) {
       throw new ApiError(404, "Crypto transaction not found");
@@ -93,11 +93,18 @@ export const getCryptoStatus = async (req: Request, res: Response, next: NextFun
   }
 };
 
-export const getCryptoTransactions = async (_req: Request, res: Response, next: NextFunction) => {
+const getTransactions = async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const transactions = getAllCryptoTransactions();
+    const transactions = getAllHotTransactions();
     res.json({ transactions });
   } catch (err) {
     next(err);
   }
+};
+
+export default {
+  webHook,
+  createSession,
+  getStatus,
+  getTransactions
 };

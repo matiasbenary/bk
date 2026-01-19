@@ -1,12 +1,12 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import { Transaction, User, CryptoTransaction, Product } from './types';
+import { Transaction, User, HotTransaction, Product } from './types';
 
 const db = new Database(path.join(__dirname, '../transactions.db'));
 
 function initializeTables() {
   db.exec(`
-    CREATE TABLE IF NOT EXISTS transactions (
+    CREATE TABLE IF NOT EXISTS stripe_transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT,
       stripe_id TEXT UNIQUE NOT NULL,
@@ -32,13 +32,13 @@ function initializeTables() {
   `);
 
   db.exec(`
-    CREATE TABLE IF NOT EXISTS crypto_transactions (
+    CREATE TABLE IF NOT EXISTS hot_transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT,
       status TEXT NOT NULL DEFAULT 'pending',
       amount_cents INTEGER,
       product_name TEXT,
-      transacction_id TEXT,
+      transaction_id TEXT,
       near_transaction_hash TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -53,7 +53,7 @@ function initializeTables() {
       price INTEGER NOT NULL,
       image_url TEXT,
       stripe_product_id TEXT,
-      hotpay_item_id TEXT,
+      hot_pay_item_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -69,7 +69,7 @@ export function createTransaction(data: {
   product_name: string;
 }) {
   const stmt = db.prepare(`
-    INSERT INTO transactions (email, stripe_id, session_id, amount_cents, product_name)
+    INSERT INTO stripe_transactions (email, stripe_id, session_id, amount_cents, product_name)
     VALUES (?, ?, ?, ?, ?)
   `);
 
@@ -84,7 +84,7 @@ export function createTransaction(data: {
 
 export function updateTransactionStatus(session_id: string, status: string, stripe_id?: string, transaction_id?: string) {
   const stmt = db.prepare(`
-    UPDATE transactions
+    UPDATE stripe_transactions
     SET status = ?,
         stripe_id = COALESCE(?, stripe_id),
         transaction_id = COALESCE(?, transaction_id),
@@ -97,7 +97,7 @@ export function updateTransactionStatus(session_id: string, status: string, stri
 
 export function getTransactionBySessionId(session_id: string): Transaction | undefined {
   const stmt = db.prepare(`
-    SELECT * FROM transactions
+    SELECT * FROM stripe_transactions
     WHERE session_id = ?
   `);
 
@@ -106,7 +106,7 @@ export function getTransactionBySessionId(session_id: string): Transaction | und
 
 export function getAllTransaction() {
   const stmt = db.prepare(`
-    SELECT * FROM transactions
+    SELECT * FROM stripe_transactions
   `);
 
   return stmt.all() as Transaction[];
@@ -139,52 +139,52 @@ export function getUserByGoogleId(google_id: string): User | undefined {
   return stmt.get(google_id) as User | undefined;
 }
 
-export function createCryptoTransaction(data: {
+export function createHotTransaction(data: {
   email: string;
-  transacction_id: string;
+  transaction_id: string;
   amount_cents: number;
   product_name: string;
 }) {
   const stmt = db.prepare(`
-    INSERT INTO crypto_transactions (email, transacction_id, amount_cents, product_name)
+    INSERT INTO hot_transactions (email, transaction_id, amount_cents, product_name)
     VALUES (?, ?, ?, ?)
   `);
 
-  return stmt.run(data.email, data.transacction_id, data.amount_cents, data.product_name);
+  return stmt.run(data.email, data.transaction_id, data.amount_cents, data.product_name);
 }
 
-export function getCryptoTransactionByTransacctionId(transacction_id: string): CryptoTransaction | undefined {
+export function getHotTransactionByTransactionId(transaction_id: string): HotTransaction | undefined {
   const stmt = db.prepare(`
-    SELECT * FROM crypto_transactions
-    WHERE transacction_id = ?
+    SELECT * FROM hot_transactions
+    WHERE transaction_id = ?
   `);
 
-  return stmt.get(transacction_id) as CryptoTransaction | undefined;
+  return stmt.get(transaction_id) as HotTransaction | undefined;
 }
 
-export function getAllCryptoTransactions() {
+export function getAllHotTransactions() {
   const stmt = db.prepare(`
-    SELECT * FROM crypto_transactions
+    SELECT * FROM hot_transactions
     ORDER BY created_at DESC
   `);
 
   return stmt.all();
 }
 
-export function updateCryptoTransactionStatus(
-  transacction_id: string,
+export function updateHotTransactionStatus(
+  transaction_id: string,
   status: string,
   near_transaction_hash?: string
 ) {
   const stmt = db.prepare(`
-    UPDATE crypto_transactions
+    UPDATE hot_transactions
     SET status = ?,
         near_transaction_hash = COALESCE(?, near_transaction_hash),
         updated_at = CURRENT_TIMESTAMP
-    WHERE transacction_id = ?
+    WHERE transaction_id = ?
   `);
 
-  return stmt.run(status, near_transaction_hash, transacction_id);
+  return stmt.run(status, near_transaction_hash, transaction_id);
 }
 
 export function createProduct(data: {
@@ -223,7 +223,7 @@ export function getProductById(id: number): Product | undefined {
 export function refreshDatabase() {
   db.exec('DROP TABLE IF EXISTS transactions');
   db.exec('DROP TABLE IF EXISTS users');
-  db.exec('DROP TABLE IF EXISTS crypto_transactions');
+  db.exec('DROP TABLE IF EXISTS hot_transactions');
   db.exec('DROP TABLE IF EXISTS products');
   initializeTables();
 }
