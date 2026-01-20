@@ -1,6 +1,6 @@
 # E-Commerce Payment Gateway - PoC
 
-A Node.js backend service demonstrating dual payment integration with traditional (Stripe) and cryptocurrency (NEAR via HOT-PAY) payment methods. Features secure Google OAuth 2.0 authentication.
+A Node.js backend service demonstrating dual payment integration with Stripe and NEAR via HOT-PAY payment methods. Features secure Google OAuth 2.0 authentication.
 
 **[Live Demo](https://onechocolate.netlify.app/)** - Try it out!
 
@@ -43,6 +43,7 @@ npm start
 ## Authentication Flow
 
 **Flow:**
+
 1. User clicks "Login with Google"
 2. Frontend redirects to `GET /auth/google`
 3. User authenticates with Google
@@ -53,6 +54,7 @@ npm start
 8. Frontend stores token and uses it for authenticated requests
 
 **Diagram:**
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -77,22 +79,27 @@ sequenceDiagram
 ### Stripe Payment
 
 **Flow:**
-1. Frontend calls `POST /create-session` with product details
+
+1. Frontend calls `POST /stripe-session` with product details
 2. Backend creates Stripe checkout session and stores transaction
 3. User completes payment on Stripe
-4. Stripe sends webhook to `POST /webhook`
+4. Stripe sends webhook to `POST /stripe-webhook`
 5. Backend updates transaction status
-6. Frontend polls `GET /status/:sessionId` to check status
+6. Frontend polls `GET /stripe-status/:sessionId` to check status
 
 **Testing Stripe Webhooks:**
 
 To test Stripe webhooks in development, run the Stripe CLI to forward webhook events to your backend:
 
 ```bash
-stripe listen --forward-to https://bk-production-8603.up.railway.app/webhook
+# Local development
+stripe listen --forward-to http://localhost:3000/stripe-webhook
+# Staging environment
+stripe listen --forward-to https://bk-production-8603.up.railway.app/stripe-webhook
 ```
 
 **Diagram:**
+
 ```mermaid
 sequenceDiagram
     participant Frontend
@@ -100,15 +107,15 @@ sequenceDiagram
     participant Stripe
     participant User
 
-    Frontend->>Backend: POST /create-session
+    Frontend->>Backend: POST /stripe-session
     Backend->>Stripe: Create checkout session
     Backend->>Backend: Store transaction
     Backend-->>Frontend: Return sessionUrl
     Frontend->>User: Redirect to Stripe
     User->>Stripe: Complete payment
-    Stripe->>Backend: POST /webhook (payment complete)
+    Stripe->>Backend: POST /stripe-webhook (payment complete)
     Backend->>Backend: Update transaction status
-    Frontend->>Backend: GET /status/:sessionId (polling)
+    Frontend->>Backend: GET /stripe-status/:sessionId (polling)
     Backend-->>Frontend: Transaction status
 ```
 
@@ -117,14 +124,16 @@ sequenceDiagram
 > **Note:** When the backend generates the payment URL, it creates a UUID as `transaction_id` and sends it to the frontend as a query parameter in the payment URL. This allows the frontend to track the transaction.
 
 **Flow:**
-1. Frontend calls `POST /create-crypto-session` with product details
+
+1. Frontend calls `POST /hot-pay-session` with product details
 2. Backend creates transaction with UUID and returns payment URL (includes `transaction_id` as query param)
 3. User completes payment via HOT-PAY
-4. HOT-PAY sends webhook to `POST /crypto-webhook`
+4. HOT-PAY sends webhook to `POST /hot-pay-webhook`
 5. Backend updates transaction status
-6. Frontend polls `GET /crypto-status/:transactionId` to check status
+6. Frontend polls `GET /hot-pay-status/:sessionId` to check status
 
 **Diagram:**
+
 ```mermaid
 sequenceDiagram
     participant Frontend
@@ -132,27 +141,29 @@ sequenceDiagram
     participant HOT-PAY
     participant User
 
-    Frontend->>Backend: POST /create-crypto-session
+    Frontend->>Backend: POST /hot-pay-session
     Backend->>Backend: Create transaction
     Backend-->>Frontend: Return paymentUrl
     Frontend->>User: Redirect to HOT-PAY
     User->>HOT-PAY: Complete payment
-    HOT-PAY->>Backend: POST /crypto-webhook (payment complete)
+    HOT-PAY->>Backend: POST /hot-pay-webhook (payment complete)
     Backend->>Backend: Update transaction status
-    Frontend->>Backend: GET /crypto-status/:transactionId (polling)
+    Frontend->>Backend: GET /hot-pay-status/:sessionId (polling)
     Backend-->>Frontend: Transaction status
 ```
 
-## How to create a HOT-PAY payment link
- - Follow the instructions at [HOT-PAY Documentation](https://hot-labs.gitbook.io/hot-pay/quickstart) for create a [Link Payment](https://pay.hot-labs.org/admin/overview).
+## How to Get API Token for HOT-PAY
 
+Go to [HOT-PAY Admin](https://pay.hot-labs.org/admin/api-keys) to generate an API key.
 
 ## API Endpoints
 
 ### Public Endpoints (No Authentication Required)
 
 #### `GET /health`
+
 Health check endpoint.
+
 ```json
 // Response
 {
@@ -161,17 +172,23 @@ Health check endpoint.
 ```
 
 #### `GET /auth/google`
+
 Initiates Google OAuth flow. Redirects to Google login.
 
 #### `GET /auth/google/callback?code=...`
+
 Handles Google OAuth callback and redirects to frontend with JWT token.
 
-#### `POST /webhook`
+#### `POST /stripe-webhook`
+
 Stripe webhook for payment events (verified with Stripe signature).
+
 - Events: `checkout.session.completed`, `checkout.session.expired`
 
-#### `POST /crypto-webhook`
-NEAR cryptocurrency payment webhook.
+#### `POST /hot-pay-webhook`
+
+HOT-PAY cryptocurrency payment webhook.
+
 ```json
 // Body
 {
@@ -183,7 +200,9 @@ NEAR cryptocurrency payment webhook.
 ```
 
 #### `POST /refresh-database`
+
 **WARNING: This endpoint will reset the entire database.**
+
 ```json
 // Response
 {
@@ -194,7 +213,9 @@ NEAR cryptocurrency payment webhook.
 ### Protected Endpoints (JWT Required)
 
 #### `GET /auth/me`
+
 Get current authenticated user information.
+
 ```json
 // Response
 {
@@ -206,8 +227,10 @@ Get current authenticated user information.
 }
 ```
 
-#### `POST /create-session`
+#### `POST /stripe-session`
+
 Create a Stripe checkout session.
+
 ```json
 // Body
 {
@@ -223,8 +246,10 @@ Create a Stripe checkout session.
 }
 ```
 
-#### `GET /status/:sessionId`
+#### `GET /stripe-status/:sessionId`
+
 Get Stripe transaction status.
+
 ```json
 // Response
 {
@@ -240,8 +265,10 @@ Get Stripe transaction status.
 }
 ```
 
-#### `GET /transactions`
+#### `GET /stripe-transactions`
+
 Get all Stripe transactions.
+
 ```json
 // Response
 {
@@ -249,8 +276,10 @@ Get all Stripe transactions.
 }
 ```
 
-#### `POST /create-crypto-session`
-Create a NEAR cryptocurrency payment session.
+#### `POST /hot-pay-session`
+
+Create a HOT-PAY cryptocurrency payment session.
+
 ```json
 // Body
 {
@@ -266,8 +295,10 @@ Create a NEAR cryptocurrency payment session.
 }
 ```
 
-#### `GET /crypto-status/:transactionId`
-Get cryptocurrency transaction status.
+#### `GET /hot-pay-status/:sessionId`
+
+Get HOT-PAY transaction status.
+
 ```json
 // Response
 {
@@ -283,8 +314,10 @@ Get cryptocurrency transaction status.
 }
 ```
 
-#### `GET /crypto-transactions`
-Get all cryptocurrency transactions.
+#### `GET /hot-pay-transactions`
+
+Get all HOT-PAY transactions.
+
 ```json
 // Response
 {
@@ -292,7 +325,37 @@ Get all cryptocurrency transactions.
 }
 ```
 
+#### `POST /products`
 
+Create a new product.
+
+```json
+// Body
+{
+  "name": "Product Name",
+  "price": 1000,
+  "description": "Product description"
+}
+
+// Response
+{
+  "id": 1,
+  "name": "Product Name",
+  "price": 1000,
+  "description": "Product description"
+}
+```
+
+#### `GET /products`
+
+Get all products.
+
+```json
+// Response
+{
+  "products": [...]
+}
+```
 
 ## License
 
