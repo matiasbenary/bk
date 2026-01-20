@@ -2,7 +2,7 @@
 
 A Node.js backend service demonstrating dual payment integration with Stripe and NEAR via HOT-PAY payment methods. Features secure Google OAuth 2.0 authentication.
 
-**[Live Demo](https://onechocolate.netlify.app/)** - Try it out!
+**[Live Demo](https://ecommercecrypto.netlify.app/)** - Try it out!
 
 ## Installation
 
