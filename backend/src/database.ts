@@ -193,10 +193,10 @@ export function createProduct(data: {
   price: number;
   image_url?: string;
   stripe_product_id?: string;
-  hotpay_item_id?: string;
+  hot_pay_item_id?: string;
 }) {
   const stmt = db.prepare(`
-    INSERT INTO products (name, description, price, image_url, stripe_product_id, hotpay_item_id)
+    INSERT INTO products (name, description, price, image_url, stripe_product_id, hot_pay_item_id)
     VALUES (?, ?, ?, ?, ?, ?)
   `);
 
@@ -206,7 +206,7 @@ export function createProduct(data: {
     data.price,
     data.image_url || null,
     data.stripe_product_id || null,
-    data.hotpay_item_id || null
+    data.hot_pay_item_id || null
   );
 }
 

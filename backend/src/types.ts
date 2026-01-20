@@ -52,11 +52,11 @@ export interface Product {
   price: number;
   image_url: string | null;
   stripe_product_id: string | null;
-  hotpay_item_id: string | null;
+  hot_pay_item_id: string | null;
   created_at: string;
 }
 
-export interface CryptoTransaction {
+export interface HotTransaction {
   id: number;
   user_id: number | null;
   email: string;

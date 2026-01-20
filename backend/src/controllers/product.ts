@@ -4,10 +4,10 @@ import { createProduct, getAllProducts } from "../database";
 import { ApiError } from "../middleware/errorHandler";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
-const HOTPAY_API_URL = "https://dev.herewallet.app/partners/merchant_item";
-const HOTPAY_AUTH_TOKEN = process.env.HOTPAY_AUTH_TOKEN || "";
-const HOTPAY_MERCHANT_ID = process.env.HOTPAY_MERCHANT_ID || "";
-const HOTPAY_WEBHOOK_URL = process.env.HOTPAY_WEBHOOK_URL || "";
+const HOT_PAY_API_URL = "https://dev.herewallet.app/partners/merchant_item";
+const HOT_PAY_AUTH_TOKEN = process.env.HOT_PAY_AUTH_TOKEN || "";
+const HOT_PAY_MERCHANT_ID = process.env.HOT_PAY_MERCHANT_ID || "";
+const HOT_PAY_WEBHOOK_URL = process.env.HOT_PAY_WEBHOOK_URL || "";
 
 export const create = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -27,16 +27,16 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       },
     });
 
-    let hotpayItemId: string | undefined;
-    if (HOTPAY_AUTH_TOKEN && HOTPAY_MERCHANT_ID) {
-      const hotpayResponse = await fetch(HOTPAY_API_URL, {
+    let hotPayItemId: string | undefined;
+    if (HOT_PAY_AUTH_TOKEN && HOT_PAY_MERCHANT_ID) {
+      const hotPayResponse = await fetch(HOT_PAY_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: HOTPAY_AUTH_TOKEN,
+          Authorization: HOT_PAY_AUTH_TOKEN,
         },
         body: JSON.stringify({
-          merchant_id: HOTPAY_MERCHANT_ID,
+          merchant_id: HOT_PAY_MERCHANT_ID,
           memo: name,
           amount: price / 100,
           header: name,
@@ -44,13 +44,13 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
           token: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",// Always use USDC
           redirect_url: "",
           icon: image_url || "",
-          webhook_url: HOTPAY_WEBHOOK_URL,
+          webhook_url: HOT_PAY_WEBHOOK_URL,
         }),
       });
 
-      if (hotpayResponse.ok) {
-        const hotpayData = await hotpayResponse.json();
-        hotpayItemId = hotpayData.item_id;
+      if (hotPayResponse.ok) {
+        const hotPayData = await hotPayResponse.json();
+        hotPayItemId = hotPayData.item_id;
       }
     }
 
@@ -60,7 +60,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       price,
       image_url,
       stripe_product_id: stripeProduct.id,
-      hotpay_item_id: hotpayItemId,
+      hot_pay_item_id: hotPayItemId,
     });
 
     res.json({
@@ -70,7 +70,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       price,
       image_url,
       stripe_product_id: stripeProduct.id,
-      hotpay_item_id: hotpayItemId,
+      hot_pay_item_id: hotPayItemId,
     });
   } catch (err) {
     next(err);

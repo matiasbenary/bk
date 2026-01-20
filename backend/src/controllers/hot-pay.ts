@@ -9,7 +9,7 @@ import {
 } from "../database";
 import { ApiError } from "../middleware/errorHandler";
 
-const HOTPAY_PAYMENT_URL = "https://pay.hot-labs.org/payment";
+const HOT_PAY_PAYMENT_URL = "https://pay.hot-labs.org/payment";
 
 const webHook = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -49,7 +49,7 @@ const createSession = async (req: Request, res: Response, next: NextFunction) =>
       throw new ApiError(404, "Product not found");
     }
 
-    if (!product.hotpay_item_id) {
+    if (!product.hot_pay_item_id) {
       throw new ApiError(400, "Product does not have HotPay configured");
     }
 
@@ -62,7 +62,7 @@ const createSession = async (req: Request, res: Response, next: NextFunction) =>
     });
 
     res.json({
-      paymentUrl: `${HOTPAY_PAYMENT_URL}?item_id=${product.hotpay_item_id}&transaction_id=${transactionId}`,
+      paymentUrl: `${HOT_PAY_PAYMENT_URL}?item_id=${product.hot_pay_item_id}&transaction_id=${transactionId}`,
       sessionId: transactionId,
     });
   } catch (err) {

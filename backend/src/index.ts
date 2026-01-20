@@ -54,7 +54,7 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 // Database refresh
-app.post("/refresh-database", (_req: Request, res: Response, next: NextFunction) => {
+app.get("/refresh-database", (_req: Request, res: Response, next: NextFunction) => {
   try {
     refreshDatabase();
     res.json({ message: "Database refreshed successfully" });

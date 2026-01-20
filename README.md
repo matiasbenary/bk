@@ -199,7 +199,7 @@ HOT-PAY cryptocurrency payment webhook.
 }
 ```
 
-#### `POST /refresh-database`
+#### `GET /refresh-database`
 
 **WARNING: This endpoint will reset the entire database.**
 
